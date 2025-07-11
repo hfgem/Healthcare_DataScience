@@ -17,6 +17,9 @@ import numpy as np
 import pandas as pd
 from functions.ai_call_functions import clean_dataframe_column
 
+current_path = os.path.realpath(__file__)
+current_dir = os.path.dirname(current_path)
+
 class run_data_cleanup():
     
     def __init__(self,data):
@@ -37,7 +40,7 @@ class run_data_cleanup():
         self.stopwords = nltk.corpus.stopwords.words('english')
         
         #Check column datatype match
-        self.all_consistent = self.check_data_type_consistency(dataframe,dtype_dict)
+        self.all_consistent = self.check_data_type_consistency(dataframe)
         
         #Check missing values
         self.missing_df = self.check_missing_values(dataframe)
@@ -180,7 +183,7 @@ class run_data_cleanup():
         
         return int_val
     
-    def check_data_type_consistency(self, df: pd.DataFrame, expected_schema: dict) -> bool:
+    def check_data_type_consistency(self, df: pd.DataFrame) -> bool:
         """
         Verifies if DataFrame columns match the expected data types.
 
@@ -200,10 +203,10 @@ class run_data_cleanup():
         all_consistent = True
         not_consistent = []
         for column in df.columns:
-            is_consistent = str(df[column].dtype) == expected_schema[column]
+            is_consistent = str(df[column].dtype) == self.dtype_dict[column]
             if not is_consistent:
                 try: #try forcing it
-                    df[column] = df[column].astype(expected_schema[column])
+                    df[column] = df[column].astype(self.dtype_dict[column])
                 except:
                     all_consistent = False
                     not_consistent.append(column)
@@ -250,7 +253,7 @@ class run_data_cleanup():
         return missing_df
     
 #%%    
-    def clean_columns(self, df: pd.DataFrame, dtype_dict: dict) -> pd.DataFrame:
+    def clean_columns(self, df: pd.DataFrame) -> pd.DataFrame:
         """
         Cleans each column based on its datatype.
 
@@ -270,9 +273,9 @@ class run_data_cleanup():
         df_copy = df.copy()
         
         for column in df_copy.columns:
-            if dtype_dict[column] == 'object':
+            if self.dtype_dict[column] == 'object':
                 df_copy = self.clean_text_column(df_copy, column)
-            elif not np.intersect1d(['int64','float64'],dtype_dict[column]).isempty():
+            elif not np.intersect1d(['int64','float64'],self.dtype_dict[column]).isempty():
                 df_copy = self.clean_num_column(df_copy, column)
         
         
@@ -296,13 +299,6 @@ class run_data_cleanup():
         """
         
         print(f"\n--- Cleaning Text in Column '{column_name}' ---")
-        if column_name not in df.columns:
-            print(f"❌ Column '{column_name}' not found in DataFrame.")
-            return df
-
-        if not pd.api.types.is_string_dtype(df[column_name]):
-            print(f"⚠️ Warning: Column '{column_name}' is not of string type. Attempting to clean anyway.")
-
         # Create a copy to avoid SettingWithCopyWarning
         df_copy = df.copy()
 
