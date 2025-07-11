@@ -1,1 +1,0 @@
-[build-system]requires=["python = 3.9.18"][project]name = "Reactivate"version = "0.0.1"authors = [    {name="Hannah Germaine", email="hgerm@brandeis.edu"}]description="Package to search for reactivation"readme = "README.md"
