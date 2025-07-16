@@ -18,6 +18,7 @@ current_path = os.path.realpath(__file__)
 current_dir = os.path.dirname(current_path)
 
 #TODO: convert into package that can be imported above
+
 honorifics = np.load(os.path.join(os.path.split(current_dir)[0],'utils','honorifics.npy'),\
         allow_pickle=True)
 
@@ -282,6 +283,10 @@ class run_data_cleanup():
         # 4. Remove duplicate spaces and strip leading/trailing whitespace
         df_copy[column_name] = df_copy[column_name].str.replace(r'\s+', ' ', regex=True).str.strip()
 
+        # 4. Remove honorifics
+        for hr in honorifics:
+            df_copy[column_name] = df_copy[column_name].str.replace(hr, '', regex=False)
+        
         print(f"✅ Successfully cleaned column '{column_name}'.")
         
         return df_copy
@@ -312,10 +317,17 @@ class run_data_cleanup():
         df_copy = df.copy()
 
         # Check for NaNs and remove associated rows
+        df_cleaned = df_copy.dropna(subset=[column_name])
         
         # Check for unreasonable outliers and report
-        
-        
+        df_mean = np.mean(df_cleaned[column_name])
+        df_std = np.std(df_cleaned[column_name])
+        df_zscore = (df_cleaned[column_name] - df_mean)/df_std
+        threshold = 3
+        outliers = np.where(np.abs(df_zscore) > threshold)[0]
+    
+        if len(outliers) > 0:
+            print(f" Column '{column_name}' contains " + str(len(outliers)) + " outliers.")
         
         print(f"✅ Successfully cleaned column '{column_name}'.")
         
