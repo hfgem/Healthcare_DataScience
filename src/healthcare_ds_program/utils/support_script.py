@@ -8,15 +8,16 @@ Created on Thu Jul 10 10:48:24 2025
 Healthcare AI Support Script
 """
 
-import string
-from functions.clean_data import run_data_cleanup
-from functions.import_data import run_data_imports
 import os
 
 current_path = os.path.realpath(__file__)
 current_dir = os.path.dirname(current_path)
 os.chdir(os.path.split(current_dir)[0])
 
+
+import string
+from functions.clean_data import run_data_cleanup
+from functions.import_data import run_data_imports
 
 data = run_data_imports()
 
@@ -27,6 +28,17 @@ clean_results = run_data_cleanup(data)
 
 
 # %%
+
+import re
+import os
+import nltk
+import tqdm
+import string
+import time
+import csv
+import numpy as np
+import pandas as pd
+from functions.ai_call_functions import clean_dataframe_column
 
 dataframe = data.dataset
 save_dir = data.save_dir
