@@ -9,16 +9,17 @@ Created on Fri Jun 20 20:13:01 2025
 import re
 import os
 import nltk
-import tqdm
 import string
 import time
-import csv
 import numpy as np
 import pandas as pd
-from functions.ai_call_functions import clean_dataframe_column
 
 current_path = os.path.realpath(__file__)
 current_dir = os.path.dirname(current_path)
+
+#TODO: convert into package that can be imported above
+honorifics = np.load(os.path.join(os.path.split(current_dir)[0],'utils','honorifics.npy'),\
+        allow_pickle=True)
 
 class run_data_cleanup():
     
@@ -32,10 +33,6 @@ class run_data_cleanup():
         """
         dataframe = self.data.dataset
         save_dir = self.data.save_dir
-        params = self.data.params_dict
-        # api_key = params['OPENAI_API_KEY']
-        # num_entries = dataframe.shape[0]
-        # max_chunk = params['Max_send']
         self.dtype_dict = self.import_dtype_list(dataframe,save_dir)
         self.stopwords = nltk.corpus.stopwords.words('english')
         
@@ -45,46 +42,11 @@ class run_data_cleanup():
         #Check missing values
         self.missing_df = self.check_missing_values(dataframe)
         
-        #
+        #Clean columns
+        self.clean_dataframe = self.clean_columns(dataframe)
         
-        # outlier_data = []
-        # outlier_notes = []
-        # for k_i, kname in enumerate(keys):
-        #     data_type = dataframe[kname].dtypes
-        #     #Manual NLTK Usage
-        #     if data_type == 'O':
-        #         dataframe, k_outlier_data, k_outlier_notes = self.text_clean(dataframe, kname, num_entries)
-        #     elif (data_type == 'int') or (data_type == 'float'):
-        #         dataframe, k_outlier_data, k_outlier_notes = self.digit_clean(dataframe,kname)
-        #     outlier_data.extend(k_outlier_data)
-        #     outlier_notes.extend(k_outlier_notes)
-        
-        # self.clean_dataframe = dataframe
-    
-        #AI call to clean
-        # data_token_counts = np.zeros(num_entries)
-        # for e_i in range(num_entries):
-        #     data_token_counts[e_i] = len(list(dataframe[kname][e_i]))
-        # data_token_cumsum = np.cumsum(data_token_counts)
-        # start_inds = [0]
-        # end_inds = [int(np.where(data_token_cumsum <= max_chunk)[0][-1])]
-        # while end_inds[-1] != num_entries-1:
-        #     start_inds.append(end_inds[-1])
-        #     next_ind = int(np.where((data_token_cumsum-data_token_cumsum[end_inds[-1]]) <= max_chunk)[0][-1])
-        #     end_inds.append(next_ind)
-        # start_end_inds = list(zip(start_inds,end_inds))
-        # if data_type == 'O':
-        #     for s_i, e_i in start_end_inds:
-        #         dataframe[kname][s_i:e_i] = clean_dataframe_column(dataframe[kname][s_i:e_i] , \
-        #                         "Capitalize only the first letter for each sentence and lowercase all others." + \
-        #                             " If not a string, convert to NaN.",\
-        #                             api_key)
-        # elif (data_type == 'int') or (data_type == 'float'):
-        #     for s_i, e_i in start_end_inds:
-        #         dataframe[kname][s_i:e_i] = clean_dataframe_column(dataframe[kname][s_i:e_i] , \
-        #                     "Confirm that each value is reasonable given it falls in the " + kname + " category." + \
-        #                         " If not reasonable, convert to NaN for future removal.",\
-        #                         api_key)
+        #Check for duplicates
+        self.clean_dataframe = self.check_duplicate_rows(self.clean_dataframe)
             
     def import_dtype_list(self, df: pd.DataFrame, savedir: str) -> list:
         """
@@ -252,7 +214,6 @@ class run_data_cleanup():
             print(missing_df)
         return missing_df
     
-#%%    
     def clean_columns(self, df: pd.DataFrame) -> pd.DataFrame:
         """
         Cleans each column based on its datatype.
@@ -275,13 +236,13 @@ class run_data_cleanup():
         for column in df_copy.columns:
             if self.dtype_dict[column] == 'object':
                 df_copy = self.clean_text_column(df_copy, column)
-            elif not np.intersect1d(['int64','float64'],self.dtype_dict[column]).isempty():
+            elif len(np.intersect1d(['int64','float64'],self.dtype_dict[column])) > 0:
                 df_copy = self.clean_num_column(df_copy, column)
         
         
         return df_copy
 
-    def clean_text_column(df: pd.DataFrame, column_name: str) -> pd.DataFrame:
+    def clean_text_column(self, df: pd.DataFrame, column_name: str) -> pd.DataFrame:
         """
         Cleans a text column by converting to lowercase, removing punctuation,
         and standardizing whitespace.
@@ -313,14 +274,19 @@ class run_data_cleanup():
         translator = str.maketrans('', '', string.punctuation)
         df_copy[column_name] = df_copy[column_name].apply(lambda x: x.translate(translator))
 
-        # 3. Remove duplicate spaces and strip leading/trailing whitespace
+        # 3. Remove honorifics
+        for hr in honorifics:
+            pattern = r'\b' + re.escape(hr) + r'\b'
+            df_copy[column_name] = df_copy[column_name].str.replace(pattern, '', regex=True)
+        
+        # 4. Remove duplicate spaces and strip leading/trailing whitespace
         df_copy[column_name] = df_copy[column_name].str.replace(r'\s+', ' ', regex=True).str.strip()
 
         print(f"✅ Successfully cleaned column '{column_name}'.")
         
         return df_copy
     
-    def clean_num_column(df: pd.DataFrame, column_name: str) -> pd.DataFrame:
+    def clean_num_column(self, df: pd.DataFrame, column_name: str) -> pd.DataFrame:
         """
         Cleans a column of dtype 'int' or 'float' by checking for NaNs and 
         testing for outliers.
@@ -355,7 +321,7 @@ class run_data_cleanup():
         
         return df_copy
 
-    def check_duplicate_rows(df: pd.DataFrame) -> pd.DataFrame:
+    def check_duplicate_rows(self, df: pd.DataFrame) -> pd.DataFrame:
         """
         Identifies and returns any duplicate rows in the DataFrame.
 
@@ -378,7 +344,7 @@ class run_data_cleanup():
             print(duplicate_rows.sort_values(by=df.columns.tolist()))
         return duplicate_rows
 
-    def check_unique_values(df: pd.DataFrame, column_name: str) -> bool:
+    def check_unique_values(self, df: pd.DataFrame, column_name: str) -> bool:
         """
         Checks if a specific column contains only unique values.
 
@@ -406,31 +372,3 @@ class run_data_cleanup():
             print("Rows with duplicate values:")
             print(duplicates[[column_name]].sort_values(by=column_name))
         return is_unique
-
-    def check_value_set(df: pd.DataFrame, column_name: str, allowed_values: set) -> pd.DataFrame:
-        """
-        Checks for values in a column that are not in a predefined set.
-
-        Parameters
-        ----------
-            df: The input pandas DataFrame.
-            column_name: The name of the column to check.
-            allowed_values: A set containing the allowed values for the column.
-
-        Returns
-        -------
-            A DataFrame containing rows with unexpected values in the specified column.
-        """
-        print(f"\n--- Checking for Allowed Values in '{column_name}' ---")
-        if column_name not in df.columns:
-            print(f"❌ Column '{column_name}' not found in DataFrame.")
-            return pd.DataFrame()
-
-        unexpected_rows = df[~df[column_name].isin(allowed_values)]
-        if unexpected_rows.empty:
-            print(f"✅ All values in '{column_name}' are within the allowed set.")
-        else:
-            print(f"⚠️ Found {len(unexpected_rows)} rows with unexpected values in '{column_name}'.")
-            print("Rows with unexpected values:")
-            print(unexpected_rows[[column_name]].drop_duplicates())
-        return unexpected_rows

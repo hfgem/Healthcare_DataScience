@@ -22,3 +22,6 @@ if __name__ == '__main__':
     
     #Clean up dataset
     clean_data = run_data_cleanup(data)
+    
+    #Run basic statistics
+    
