@@ -18,7 +18,6 @@ current_path = os.path.realpath(__file__)
 current_dir = os.path.dirname(current_path)
 
 #TODO: convert into package that can be imported above
-
 honorifics = np.load(os.path.join(os.path.split(current_dir)[0],'utils','honorifics.npy'),\
         allow_pickle=True)
 
@@ -260,7 +259,7 @@ class run_data_cleanup():
             The DataFrame with the specified column cleaned.
         """
         
-        print(f"\n--- Cleaning Text in Column '{column_name}' ---")
+        print(f"\n--- Cleaning text in column '{column_name}' ---")
         # Create a copy to avoid SettingWithCopyWarning
         df_copy = df.copy()
 
@@ -277,17 +276,13 @@ class run_data_cleanup():
 
         # 3. Remove honorifics
         for hr in honorifics:
-            pattern = r'\b' + re.escape(hr) + r'\b'
+            pattern = r'\b' + hr + r'\b'
             df_copy[column_name] = df_copy[column_name].str.replace(pattern, '', regex=True)
         
         # 4. Remove duplicate spaces and strip leading/trailing whitespace
         df_copy[column_name] = df_copy[column_name].str.replace(r'\s+', ' ', regex=True).str.strip()
 
-        # 4. Remove honorifics
-        for hr in honorifics:
-            df_copy[column_name] = df_copy[column_name].str.replace(hr, '', regex=False)
-        
-        print(f"✅ Successfully cleaned column '{column_name}'.")
+        print(f"Successfully cleaned column '{column_name}'.")
         
         return df_copy
     
@@ -310,7 +305,7 @@ class run_data_cleanup():
         
         print(f"\n--- Cleaning values in column '{column_name}' ---")
         if column_name not in df.columns:
-            print(f"❌ Column '{column_name}' not found in DataFrame.")
+            print(f"ERROR: Column '{column_name}' not found in DataFrame.")
             return df
         
         # Create a copy to avoid SettingWithCopyWarning
@@ -329,7 +324,7 @@ class run_data_cleanup():
         if len(outliers) > 0:
             print(f" Column '{column_name}' contains " + str(len(outliers)) + " outliers.")
         
-        print(f"✅ Successfully cleaned column '{column_name}'.")
+        print(f"Successfully cleaned column '{column_name}'.")
         
         return df_copy
 
@@ -349,38 +344,11 @@ class run_data_cleanup():
         print("\n--- Checking for Duplicate Rows ---")
         duplicate_rows = df[df.duplicated(keep=False)]
         if duplicate_rows.empty:
-            print("✅ No duplicate rows found.")
+            print("No duplicate rows found.")
         else:
             print(f"⚠️ Found {len(duplicate_rows.drop_duplicates())} duplicate row(s).")
             print("Duplicate rows:")
             print(duplicate_rows.sort_values(by=df.columns.tolist()))
-        return duplicate_rows
-
-    def check_unique_values(self, df: pd.DataFrame, column_name: str) -> bool:
-        """
-        Checks if a specific column contains only unique values.
-
-        Parameters
-        ----------
-            df: The input pandas DataFrame.
-            column_name: The name of the column to check for uniqueness.
-
-        Returns
-        -------
-            True if the column has all unique values, False otherwise.
-        """
-        print(f"\n--- Checking for Unique Values in '{column_name}' ---")
-        if column_name not in df.columns:
-            print(f"❌ Column '{column_name}' not found in DataFrame.")
-            return False
-
-        is_unique = df[column_name].is_unique
-        if is_unique:
-            print(f"✅ Column '{column_name}' contains all unique values.")
-        else:
-            # Find and display the values that are not unique
-            duplicates = df[df[column_name].duplicated(keep=False)]
-            print(f"⚠️ Column '{column_name}' has duplicate values.")
-            print("Rows with duplicate values:")
-            print(duplicates[[column_name]].sort_values(by=column_name))
-        return is_unique
+        df_cleaned = df.drop_duplicates()
+        
+        return df_cleaned

@@ -26,3 +26,6 @@ clean_results = run_data_cleanup(data)
 #%%
 
 clean_dataframe = clean_results.clean_dataframe
+
+from functions.basic_stats import run_basic_stats
+basic_stats = run_basic_stats([clean_dataframe,data.save_dir])
