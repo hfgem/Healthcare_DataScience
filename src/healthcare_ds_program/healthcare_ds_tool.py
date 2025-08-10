@@ -14,6 +14,7 @@ os.chdir(current_dir)
 
 from functions.import_data import run_data_imports
 from functions.clean_data import run_data_cleanup
+from functions.basic_stats import run_basic_stats
 
 if __name__ == '__main__':
     
@@ -24,4 +25,6 @@ if __name__ == '__main__':
     clean_data = run_data_cleanup(data)
     
     #Run basic statistics
+    basic_stats = run_basic_stats([clean_data.clean_dataframe,data.save_dir])
+    
     
